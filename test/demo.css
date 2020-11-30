@@ -1,0 +1,6 @@
+@import "common.css";
+
+body {
+    background: var(--bgColor);
+    color: var(--mainColor);
+}

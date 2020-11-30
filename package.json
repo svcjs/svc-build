@@ -1,0 +1,31 @@
+{
+  "name": "svc-build",
+  "version": "0.0.1",
+  "description": "Build web project with multi-entry",
+  "repository": "https://github.com/svcjs/svc-build",
+  "homepage": "https://github.com/svcjs/svc-build",
+  "main": "src/build.js",
+  "bin": {
+    "build": "bin/build.js",
+    "dev": "bin/dev.js"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.3",
+    "@babel/preset-env": "^7.12.1",
+    "browserify": "^17.0.0",
+    "clean-css": "^4.2.3",
+    "html-minifier": "^4.0.0",
+    "mime-types": "^2.1.27",
+    "node-watch": "^0.7.0",
+    "postcss": "^8.1.2",
+    "postcss-import": "^13.0.0",
+    "uglify-es": "^3.3.9",
+    "ws": "^7.3.1"
+  },
+  "scripts": {
+    "test": "build test",
+    "dev": "dev test"
+  },
+  "author": "",
+  "license": "ISC"
+}
