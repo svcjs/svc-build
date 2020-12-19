@@ -10,9 +10,12 @@ process.on('SIGINT', function () {
     process.exit();
 });
 
-watch.start(config, name => {
-    // 广播更新事件
-    server.broadcast({action: 'changed', name})
+watch.start(config, {
+    onUpdate: name => {
+        // 广播更新事件
+        server.broadcast({action: 'changed', name})
+    },
+    onStart: () => {
+        server.start(config)
+    },
 })
-
-server.start(config)

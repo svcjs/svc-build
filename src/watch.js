@@ -7,7 +7,8 @@ let pending = null
 let building = false
 const postfixMatcher = new RegExp(`(${path.sep}[^${path.sep}.]+)\.[^${path.sep}.]*$`)
 let _config = {}
-let _onUpdate = null
+let _onUpdate
+let _onStart
 
 function buildOnWatch(name) {
     if (building) {
@@ -59,9 +60,7 @@ function buildOnWatch(name) {
         if (_config.onBuildEnd) _config.onBuildEnd(_config)
 
         // 触发onUpdate事件
-        if (_onUpdate) {
-            _onUpdate(name)
-        }
+        if (_onUpdate) _onUpdate(name)
 
         building = false
         console.info('')
@@ -76,11 +75,15 @@ function buildOnWatch(name) {
 }
 
 // 监听文件变化，触发构建
-function start(config, onUpdate) {
-    _config = config
+function start(config, {onUpdate, onStart}) {
     _onUpdate = onUpdate
+    _onStart = onStart
+    _config = config
     buildAll().then(() => {
         if (_config.onBuildEnd) _config.onBuildEnd(_config)
+
+        // 触发onStart事件
+        if (_onStart) _onStart()
 
         console.info('\nwatching \033[36m', _config.entry, '\033[0m ...\n')
         watch(_config.entry, {recursive: true}, (_, name) => {

@@ -62,7 +62,8 @@ function buildPath(entry, output, production, onMake) {
             } else if (!f.name.endsWith('.js') && !f.name.endsWith('.css') && !f.name.endsWith('.yml')) {
                 // 除了js、css、yml之外的文件都作为资源复制到输出文件夹
                 fs.mkdirSync(path.dirname(newOutput), {recursive: true})
-                fs.copyFile(newEntry, newOutput, ()=>{})
+                fs.copyFile(newEntry, newOutput, () => {
+                })
             }
         } else if (f.isDirectory()) {
             tasks.push(buildPath(newEntry, newOutput, production, onMake))
@@ -154,7 +155,9 @@ function buildFile(entry, output, production, onMake) {
         for (let m of styleMatches) {
             allTasks.push(new Promise(resolve => {
                 postcss([postcssImport({root: entryPath})]).process(m[1], {from: undefined}).then(css => {
-                    html = html.replace(m[0], '<style>' + (!production ? css.css : new cssUglify().minify(css.css).styles) + '</style>')
+                    let cssCode = (!production ? css.css : new cssUglify().minify(css.css).styles)
+                    cssCode = cssCode.replace(/\$/g, '$$$$') // fix $
+                    html = html.replace(m[0], '<style>' + cssCode + '</style>')
                     resolve()
                 }).catch(e => {
                     console.error(entry, e)
@@ -193,6 +196,8 @@ function buildFile(entry, output, production, onMake) {
                         jsCode = babelCore.transform(jsCode, {babelrc: false, presets: [['@babel/preset-env']]}).code
                         jsCode = jsUglify.minify(jsCode).code
                     }
+                    jsCode = jsCode.replace(/\$/g, '$$$$') // fix $
+                    // console.info('#######', m[0], jsCode)
                     html = html.replace(m[0], '<script>' + jsCode + '</script>')
                     resolve()
                 })
@@ -214,7 +219,15 @@ function buildFile(entry, output, production, onMake) {
                 }
                 fs.mkdirSync(path.dirname(output), {recursive: true})
                 fs.writeFileSync(output, html)
-                console.info(' >>', entry, '\t\033[36m', (usedTime / 1000).toFixed(3), '\033[0m')
+                let size = html.length
+                if(size > 1024*1024){
+                    size = (html.length / 1024).toFixed(1) + 'M'
+                }else if(size > 1024){
+                    size = (html.length / 1024).toFixed(1) + 'K'
+                }else{
+                    size = size.toString()
+                }
+                console.info(' >>', entry, '\t\033[36m', (usedTime / 1000).toFixed(3), "\t", size, '\033[0m')
             }
             allResolve()
         })

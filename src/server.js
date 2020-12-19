@@ -1,9 +1,10 @@
 const fs = require('fs')
 const path = require('path')
-const http = require('http');
-const https = require('https');
-const ws = require('ws');
-const mimeTypes = require('mime-types');
+const http = require('http')
+const https = require('https')
+const ws = require('ws')
+const mimeTypes = require('mime-types')
+const devHtml = require('./dev.html')
 
 let _config = {}
 let conns = []
@@ -20,6 +21,11 @@ function doRequest(req, res) {
     if (fileExists) {
         res.writeHead(200, 'Content-Type: ' + mimeTypes.lookup(filePath))
         res.write(fs.readFileSync(filePath))
+        res.end()
+    } else if(urlPath === '/dev.html'){
+        // 默认的开发页
+        res.writeHead(200, 'Content-Type: ' + mimeTypes.lookup(filePath))
+        res.write(devHtml)
         res.end()
     } else {
         // 代理请求到 app.host
