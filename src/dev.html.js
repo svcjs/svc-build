@@ -36,7 +36,7 @@ module.exports = `<!DOCTYPE html>
             if (index.src) {
                 index.contentWindow.location.reload()
             } else {
-                index.src = 'index.html'
+                index.src = 'dev_index.html'
             }
         }
 

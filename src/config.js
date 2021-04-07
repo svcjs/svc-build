@@ -20,7 +20,7 @@ function parse() {
     // build.js
     // module.exports = {
     //     entry: 'src',
-    //     output: 'dist',
+    //     output: 'www',
     //     onMake: (file, html) => {
     //     },
     //     onBuildStart: () => {
@@ -41,7 +41,7 @@ function parse() {
 
     // 默认配置
     if (config.entry === undefined) config.entry = 'src'
-    if (config.output === undefined) config.output = 'dist'
+    if (config.output === undefined) config.output = 'www'
     if (config.devServerPort === undefined) config.devServerPort = 8080
     if (config.apiServerHost === undefined) config.apiServerHost = 'localhost'
     if (config.apiServerPort === undefined) config.apiServerPort = 8081

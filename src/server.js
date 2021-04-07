@@ -13,6 +13,9 @@ function doRequest(req, res) {
     let urlPath = req.url.split('?')[0]
     if (path.sep !== '/') urlPath = urlPath.replace('/\//g', path.sep)
     let filePath = _config.output + urlPath
+    if (filePath.endsWith('/dev_index.html') && !fs.existsSync(filePath) && fs.existsSync(filePath.replace('/dev_index.html', '/index.html'))) {
+        filePath = filePath.replace('/dev_index.html', '/index.html')
+    }
     let fileExists = fs.existsSync(filePath)
     if (fileExists && fs.statSync(filePath).isDirectory()) {
         filePath = path.join(filePath, 'index.html')
@@ -22,7 +25,7 @@ function doRequest(req, res) {
         res.writeHead(200, 'Content-Type: ' + mimeTypes.lookup(filePath))
         res.write(fs.readFileSync(filePath))
         res.end()
-    } else if(urlPath === '/dev.html'){
+    } else if (urlPath === '/dev.html') {
         // 默认的开发页
         res.writeHead(200, 'Content-Type: ' + mimeTypes.lookup(filePath))
         res.write(devHtml)
