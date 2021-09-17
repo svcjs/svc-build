@@ -1,6 +1,6 @@
 {
   "name": "svc-build",
-  "version": "0.0.6",
+  "version": "0.0.9",
   "description": "Build web project with multi-entry",
   "repository": "https://github.com/svcjs/svc-build",
   "homepage": "https://github.com/svcjs/svc-build",

@@ -18,8 +18,8 @@ function buildOnWatch(name) {
     }
     building = true
 
+    let startTime = new Date().getTime()
     let task
-
     if (name === 'all' || fs.existsSync(name)) {
         console.info(name, 'changed')
         // 识别归属的视图
@@ -63,6 +63,8 @@ function buildOnWatch(name) {
         if (_onUpdate) _onUpdate(name)
 
         building = false
+        let usedTime = new Date().getTime() - startTime
+        console.info('Done\t\033[36m', (usedTime / 1000).toFixed(3), '\033[0m')
         console.info('')
 
         // 构建队列中的任务
@@ -79,8 +81,11 @@ function start(config, {onUpdate, onStart}) {
     _onUpdate = onUpdate
     _onStart = onStart
     _config = config
+    let startTime = new Date().getTime()
     buildAll().then(() => {
         if (_config.onBuildEnd) _config.onBuildEnd(_config)
+        let usedTime = new Date().getTime() - startTime
+        console.info('Done\t\033[36m', (usedTime / 1000).toFixed(3), '\033[0m')
 
         // 触发onStart事件
         if (_onStart) _onStart()
@@ -96,11 +101,11 @@ function start(config, {onUpdate, onStart}) {
 
 function buildAll() {
     if (_config.onBuildStart) _config.onBuildStart(_config)
-    return build(_config.entry, _config.output, false, _config.onMake)
+    return build(_config.entry, _config.output, false, _config)
 }
 
 function buildOne(entry) {
-    return build(entry, _config.output + entry.substr(_config.entry.length), false, _config.onMake)
+    return build(entry, _config.output + entry.substr(_config.entry.length), false, _config)
 }
 
 module.exports = {start}

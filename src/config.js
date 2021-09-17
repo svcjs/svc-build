@@ -21,6 +21,7 @@ function parse() {
     // module.exports = {
     //     entry: 'src',
     //     output: 'www',
+    //     replaces: {FROM:'TO'},
     //     onMake: (file, html) => {
     //     },
     //     onBuildStart: () => {
@@ -42,6 +43,7 @@ function parse() {
     // 默认配置
     if (config.entry === undefined) config.entry = 'src'
     if (config.output === undefined) config.output = 'www'
+    if (config.appPath === undefined) config.appPath = '/dev_index.html'
     if (config.devServerPort === undefined) config.devServerPort = 8080
     if (config.apiServerHost === undefined) config.apiServerHost = 'localhost'
     if (config.apiServerPort === undefined) config.apiServerPort = 8081

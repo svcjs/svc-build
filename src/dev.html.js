@@ -2,6 +2,8 @@ module.exports = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"/>
+    <meta name="google" content="notranslate"/>
     <title></title>
     <style>
         body {
@@ -28,7 +30,7 @@ module.exports = `<!DOCTYPE html>
             ws.onopen = refreshView
             ws.onmessage = refreshView
             ws.onclose = () => {
-                ws = null
+                setTimeout(connect, 1000)
             }
         }
 
@@ -36,15 +38,12 @@ module.exports = `<!DOCTYPE html>
             if (index.src) {
                 index.contentWindow.location.reload()
             } else {
-                index.src = 'dev_index.html'
+                index.src = '__APP_PATH__'
             }
         }
 
         addEventListener('load', () => {
             connect()
-            setInterval(() => {
-                if (!ws) connect()
-            }, 1000)
         })
 
     </script>

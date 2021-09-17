@@ -28,7 +28,7 @@ function doRequest(req, res) {
     } else if (urlPath === '/dev.html') {
         // 默认的开发页
         res.writeHead(200, 'Content-Type: ' + mimeTypes.lookup(filePath))
-        res.write(devHtml)
+        res.write(devHtml.replaceAll('__APP_PATH__', _config.appPath))
         res.end()
     } else {
         // 代理请求到 app.host
@@ -95,12 +95,16 @@ function start(config) {
                 }
 
                 conns.push(conn)
-                if (_config.onMessage) {
-                    conn.on('message', message => {
+                conn.on('message', message => {
+                    if (message === 'PING') {
+                        conn.send('PONG')
+                        return
+                    }
+                    if (_config.onMessage) {
                         let msg = JSON.parse(message)
                         _config.onMessage(conn, msg)
-                    })
-                }
+                    }
+                })
                 conn.on('close', () => {
                     for (let i = 0; i < conns.length; i++) {
                         if (conns[i] === conn) {
