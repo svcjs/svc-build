@@ -23,15 +23,15 @@ function buildOnWatch(name) {
     if (name === 'all' || fs.existsSync(name)) {
         console.info(name, 'changed')
         // 识别归属的视图
-        if (!name.endsWith('.html')) {
-            let htmlFileName = name.replace(postfixMatcher, '$1.html')
-            if (fs.existsSync(htmlFileName)) name = htmlFileName
-        }
+        // if (!name.endsWith('.html')) {
+        //     let htmlFileName = name.replace(postfixMatcher, '$1.html')
+        //     if (fs.existsSync(htmlFileName)) name = htmlFileName
+        // }
 
         // 创建构建任务
-        if (name.endsWith('.html')) {
+        if (name.endsWith('.html') && name.indexOf('/_') === -1) {
             task = buildOne(name)
-        } else if (!name.endsWith('.js') && !name.endsWith('.css') && !name.endsWith('.yml')) {
+        } else if (!name.endsWith('.js') && !name.endsWith('.css') && !name.endsWith('.html') && !name.endsWith('.yml')) {
             // 除了js、css、yml之外的文件都作为资源复制到输出文件夹
             let dstName = _config.output + name.substr(_config.entry.length)
             fs.mkdirSync(path.dirname(dstName), {recursive: true})
@@ -93,6 +93,7 @@ function start(config, {onUpdate, onStart}) {
         console.info('\nwatching \033[36m', _config.entry, '\033[0m ...\n')
         watch(_config.entry, {recursive: true}, (_, name) => {
             // 过滤隐藏文件
+            // if (name.indexOf(path.sep + '.') !== -1 || name.indexOf(path.sep + '_') !== -1) return
             if (name.indexOf(path.sep + '.') !== -1) return
             buildOnWatch(name)
         })

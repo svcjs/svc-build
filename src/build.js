@@ -4,6 +4,8 @@ const htmlUglify = require('html-minifier');
 const jsUglify = require('uglify-es');
 const cssUglify = require('clean-css');
 const browserify = require('browserify');
+const html2js = require('html2js-browserify');
+// const exorcist = require('exorcist');
 const babelCore = require('@babel/core');
 const postcss = require('postcss');
 const postcssImport = require('postcss-import');
@@ -15,7 +17,7 @@ const htmlUglifyOptions = {
     minifyCSS: true
 }
 
-let currentResVersion = ""
+// let currentResVersion = ""
 let madeResources = {}
 
 function build(entry, output, production, config) {
@@ -24,6 +26,24 @@ function build(entry, output, production, config) {
         // 清空输出文件夹
         if (fs.existsSync(output)) {
             fs.rmSync(output, {recursive: true})
+        }
+
+        if (config && config.copies) {
+            for (let from in config.copies) {
+                let to = config.copies[from]
+                if (to.endsWith('/')) to += path.basename(from)
+                let toPath = path.dirname(to)
+                if (!fs.existsSync(toPath)) fs.mkdirSync(toPath, {recursive: true})
+                let fromStat = fs.existsSync(from) ? fs.statSync(from) : null
+                let toStat = fs.existsSync(to) ? fs.statSync(to) : null
+                if (fromStat && fromStat.isFile()) {
+                    // 复制文件
+                    if (!toStat || toStat.mtime !== fromStat.mtime) {
+                        fs.copyFileSync(from, to)
+                        console.info(' >> copy', from, to)
+                    }
+                }
+            }
         }
 
         // 构建目录
@@ -45,13 +65,13 @@ function build(entry, output, production, config) {
 }
 
 function buildPath(entry, output, production, config) {
-    currentResVersion = new Date().getTime()
+    // currentResVersion = new Date().getTime()
     madeResources = {}
 
     // 构建文件夹下所有文件
     let tasks = []
     for (let f of fs.readdirSync(entry, {withFileTypes: true})) {
-        if (f.name.startsWith('.')) {
+        if (f.name.startsWith('.') || f.name.startsWith('_')) {
             // 清除残留临时文件
             if ((f.isFile() && f.name.startsWith('._tmp_'))) {
                 fs.unlinkSync(path.join(entry, f.name))
@@ -107,20 +127,26 @@ function buildFile(entry, output, production, config) {
 
         // 查找css引用
         let styleMatches = []
-        let matchs = html.matchAll(/<link.+?text\/css.*?href="(.*?\.css)".*?>/gsi)
+        let matchs = html.matchAll(/<link.+?text\/css.*?href="(.*?\.css)".*?>/gi)
         if (matchs) {
             for (let m of matchs) {
                 let filePath = m[1][0] === '/' ? path.join(config.entry, m[1]) : path.join(entryPath, m[1])
-                let fileOutPath = m[1][0] === '/' ? path.join(config.output, m[1]) :path.join(path.dirname(output), m[1])
+                let fileOutPath = m[1][0] === '/' ? path.join(config.output, m[1]) : path.join(path.dirname(output), m[1])
                 if (fs.existsSync(filePath)) {
                     if (!madeResources[filePath]) {
                         allTasks.push(new Promise(resolve => {
                             postcss([postcssImport({root: path.dirname(filePath)})]).process(fs.readFileSync(filePath).toString(), {from: undefined}).then(css => {
+                                if (config && config.cssReplaces) {
+                                    for (let k in config.cssReplaces) {
+                                        css.css = css.css.replace(new RegExp(k, 'gm'), config.cssReplaces[k])
+                                    }
+                                }
                                 let cssCode = (!production ? css.css : new cssUglify().minify(css.css).styles)
                                 // cssCode = cssCode.replace(/\$/g, '$$$$') // fix $
                                 fs.mkdirSync(path.dirname(fileOutPath), {recursive: true})
                                 fs.writeFileSync(fileOutPath, cssCode)
                                 // html = html.replace(m[0], '<style>' + cssCode + '</style>')
+                                html = html.replace(m[1] + '"', m[1] + '?v=' + fs.statSync(filePath).mtime.getTime().toString(36) + '"')
                                 resolve()
                             }).catch(e => {
                                 console.error(entry, e)
@@ -128,30 +154,34 @@ function buildFile(entry, output, production, config) {
                                 resolve()
                             })
                         }))
+                    } else {
+                        html = html.replace(m[1] + '"', m[1] + '?v=' + fs.statSync(filePath).mtime.getTime().toString(36) + '"')
                     }
-                    html = html.replace(m[1], m[1] + "?v=" + currentResVersion)
 
                     // let replaceTag = `##__REPLACE__${matchIndex}__##`
                     // matchIndex++
                     // html = html.replace(m[0], replaceTag)
                     // styleMatches.push([replaceTag, fs.readFileSync(filePath).toString()])
+                } else if (fs.existsSync(fileOutPath)) {
+                    html = html.replace(m[1] + '"', m[1] + '?v=' + fs.statSync(fileOutPath).mtime.getTime().toString(36) + '"')
                 }
             }
         }
 
         // 查找js引用
         let scriptMatches = []
-        matchs = html.matchAll(/<script.+?src="(.*?\.js)".*?\/.*?>/gsi)
+        matchs = html.matchAll(/<script.+?src="(.*?\.js)".*?\/.*?>/gi)
         if (matchs) {
             for (let m of matchs) {
                 let filePath = m[1][0] === '/' ? path.join(config.entry, m[1]) : path.join(entryPath, m[1])
-                let fileOutPath = m[1][0] === '/' ? path.join(config.output, m[1]) :path.join(path.dirname(output), m[1])
+                let fileOutPath = m[1][0] === '/' ? path.join(config.output, m[1]) : path.join(path.dirname(output), m[1])
                 // let filePath = path.join(entryPath, m[1])
                 // let fileOutPath = path.join(path.dirname(output), m[1])
                 if (fs.existsSync(filePath)) {
                     if (!madeResources[filePath]) {
                         allTasks.push(new Promise(resolve => {
-                            let b = browserify(filePath).bundle()
+                            let b = browserify(filePath, {debug: !production}).transform(html2js).bundle()
+                            // b.pipe(exorcist(fileOutPath + '.map'))
                             let a = []
                             b.on('data', d => {
                                 a.push(d.toString())
@@ -163,23 +193,37 @@ function buildFile(entry, output, production, config) {
                             })
                             b.on('end', () => {
                                 let jsCode = a.join('')
+                                if (config && config.jsReplaces) {
+                                    for (let k in config.jsReplaces) {
+                                        jsCode = jsCode.replace(new RegExp(k, 'gm'), config.jsReplaces[k])
+                                    }
+                                }
+
                                 if (production) {
                                     // 生产模式，转换为ES5并且压缩作为发行版本
                                     // console.log('==============', process.cwd())
                                     jsCode = babelCore.transform(jsCode, {
                                         babelrc: false,
-                                        presets: [['@babel/preset-env']]
+                                        // plugins: [['@babel/plugin-syntax-dynamic-import']],
+                                        // presets: [['@babel/preset-env', '@babel/preset-stage-0']],
+                                        presets: [['@babel/preset-env']],
+                                        // "presets": ["es2015", "stage-0"]
                                     }).code
                                     jsCode = jsUglify.minify(jsCode).code
                                 }
                                 // jsCode = jsCode.replace(/\$/g, '$$$$') // fix $
                                 fs.mkdirSync(path.dirname(fileOutPath), {recursive: true})
                                 fs.writeFileSync(fileOutPath, jsCode)
+                                html = html.replace(m[1] + '"', m[1] + '?v=' + fs.statSync(filePath).mtime.getTime().toString(36) + '"')
                                 resolve()
                             })
                         }))
+                    } else {
+                        html = html.replace(m[1] + '"', m[1] + '?v=' + fs.statSync(filePath).mtime.getTime().toString(36) + '"')
                     }
-                    html = html.replace(m[1], m[1] + "?v=" + currentResVersion)
+                    // html = html.replace(m[1], m[1] + "?v=" + currentResVersion)
+                } else if (fs.existsSync(fileOutPath)) {
+                    html = html.replace(m[1] + '"', m[1] + '?v=' + fs.statSync(fileOutPath).mtime.getTime().toString(36) + '"')
                 }
             }
         }
@@ -210,6 +254,12 @@ function buildFile(entry, output, production, config) {
         for (let m of styleMatches) {
             allTasks.push(new Promise(resolve => {
                 postcss([postcssImport({root: entryPath})]).process(m[1], {from: undefined}).then(css => {
+                    if (config && config.cssReplaces) {
+                        for (let k in config.cssReplaces) {
+                            css.css = css.css.replace(new RegExp(k, 'gm'), config.cssReplaces[k])
+                        }
+                    }
+
                     let cssCode = (!production ? css.css : new cssUglify().minify(css.css).styles)
                     cssCode = cssCode.replace(/\$/g, '$$$$') // fix $
                     html = html.replace(m[0], '<style>' + cssCode + '</style>')
@@ -228,7 +278,8 @@ function buildFile(entry, output, production, config) {
 
                 let tmpFile = path.join(entryPath, '._tmp_' + Math.ceil(Math.random() * 1000000) + '.js')
                 fs.writeFileSync(tmpFile, m[1])
-                let b = browserify(tmpFile).bundle()
+                let b = browserify(tmpFile, {debug: !production}).transform(html2js).bundle()
+                // b.pipe(exorcist(output.replace(/html$/, 'map')))
                 let a = []
                 b.on('data', d => {
                     a.push(d.toString())
@@ -246,10 +297,21 @@ function buildFile(entry, output, production, config) {
                         fs.unlinkSync(tmpFile)
                     }
                     let jsCode = a.join('')
+                    if (config && config.jsReplaces) {
+                        for (let k in config.jsReplaces) {
+                            jsCode = jsCode.replace(new RegExp(k, 'gm'), config.jsReplaces[k])
+                        }
+                    }
+
                     if (production) {
                         // 生产模式，转换为ES5并且压缩作为发行版本
                         // console.log('==============', process.cwd())
-                        jsCode = babelCore.transform(jsCode, {babelrc: false, presets: [['@babel/preset-env']]}).code
+                        jsCode = babelCore.transform(jsCode, {
+                            babelrc: false,
+                            // plugins: [['@babel/plugin-syntax-dynamic-import']],
+                            // presets: [['@babel/preset-env', '@babel/preset-stage-0']]
+                            presets: [['@babel/preset-env']]
+                        }).code
                         // jsCode = jsUglify.minify(jsCode).code
                     }
                     jsCode = jsCode.replace(/\$/g, '$$$$') // fix $
@@ -297,7 +359,7 @@ function buildFile(entry, output, production, config) {
                 fs.writeFileSync(output, html)
                 let size = html.length
                 if (size > 1024 * 1024) {
-                    size = (html.length / 1024).toFixed(1) + 'M'
+                    size = (html.length / 1024 / 1024).toFixed(1) + 'M'
                 } else if (size > 1024) {
                     size = (html.length / 1024).toFixed(1) + 'K'
                 } else {

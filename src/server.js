@@ -22,14 +22,33 @@ function doRequest(req, res) {
         fileExists = fs.existsSync(filePath)
     }
     if (fileExists) {
-        res.writeHead(200, 'Content-Type: ' + mimeTypes.lookup(filePath))
-        res.write(fs.readFileSync(filePath))
+        let mimeType = mimeTypes.lookup(filePath)
+        let fileData = fs.readFileSync(filePath)
+        let fileInfo = fs.statSync(filePath)
+        res.setHeader('Content-Type', mimeType)
+        res.setHeader('Last-Modified', fileInfo.mtime.getTime().toString())
+        if(_config.allowOrigin) {
+            res.setHeader("Access-Control-Allow-Origin", _config.allowOrigin);
+            res.setHeader("Access-Control-Allow-Headers", "X-Requested-With");
+            res.setHeader("Access-Control-Allow-Methods", "PUT,POST,GET,DELETE,OPTIONS");
+        }
+        res.writeHead(200)
+        res.write(fileData)
         res.end()
+        if(_config.logRequest) {
+            console.info(req.method, req.url, filePath, mimeType, fileData.length)
+        }
     } else if (urlPath === '/dev.html') {
         // 默认的开发页
-        res.writeHead(200, 'Content-Type: ' + mimeTypes.lookup(filePath))
-        res.write(devHtml.replaceAll('__APP_PATH__', _config.appPath))
+        let mimeType = mimeTypes.lookup(filePath)
+        let fileData = devHtml.replace(/__APP_PATH__/g, _config.appPath)
+        res.setHeader('Content-Type', mimeType)
+        res.writeHead(200)
+        res.write(fileData)
         res.end()
+        if(_config.logRequest) {
+            console.info(req.method, req.url, filePath, mimeType, fileData.length)
+        }
     } else {
         // 代理请求到 app.host
         let headers = {}
@@ -52,15 +71,26 @@ function doRequest(req, res) {
                     }
                 }
             }
+            res.writeHead(res2.statusCode)
             res2.pipe(res)
+            if(_config.logRequest) {
+                console.info('  == PROXY',req.method, req.url, res2.statusCode)
+            }
         })
-        req2.on('error', () => {
+        req2.on('error', err => {
+            res.writeHead(404)
             res.end()
+            if(_config.logRequest) {
+                console.info('  == PROXY', req.method, req.url, 404, err)
+            }
         })
 
-        req.on('error', () => {
+        req.on('error', err => {
             req2.end()
             res.end()
+            if(_config.logRequest) {
+                console.info('  == PROXY',req.method, req.url, 400, err)
+            }
         })
 
         req.on('data', chunk => {

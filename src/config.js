@@ -21,7 +21,11 @@ function parse() {
     // module.exports = {
     //     entry: 'src',
     //     output: 'www',
+    //     copies: {FROM:'TO'},
+    //     noWatch: ['DIR or FILE'],
     //     replaces: {FROM:'TO'},
+    //     cssReplaces: {FROM:'TO'},
+    //     jsReplaces: {FROM:'TO'},
     //     onMake: (file, html) => {
     //     },
     //     onBuildStart: () => {
